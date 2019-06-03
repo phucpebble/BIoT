@@ -2,29 +2,18 @@
 package it.hp.biot;
 
 import android.Manifest;
-import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Credentials;
-import android.os.Handler;
-import android.provider.Settings;
-import android.support.annotation.NonNull;
+import android.net.Uri;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -40,7 +29,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.web3j.crypto.WalletUtils;
 import org.web3j.protocol.Web3j;
@@ -53,60 +41,58 @@ import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Convert;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.Provider;
 import java.security.Security;
-import java.text.DateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
-import it.hp.biot.BIoT;
+import it.hp.biot.ImageClassify.ClassifierActivity;
+import it.hp.biot.IoT.bluetoothRaspberrypi;
+import it.hp.biot.QRcode.QrGenerate;
+import it.hp.biot.QRcode.QrReader;
+import it.hp.biot.Ethereum.SmartContract;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
-    private Web3j web3j;
+
     private GoogleMap mMap;
-
-    //FIXME: Add your own password here
-    private final String password = "PrivateKey";//16FB976643702D2E530D0ABA9A2E38B8E44E0A3B6B3C330CD41BB794BDC96DA6"; //Copy from datamask
-    private final static String privateKeyRopsten = "16FB976643702D2E530D0ABA9A2E38B8E44E0A3B6B3C330CD41BB794BDC96DA6"; //Privekey export form Menu, DataMask
-    private final static String contractAddressRopsten = "0x6f338949af6df038d715a5e07d10f3a08cb0d68e";
-    private final static String toAddress = "0x81b7e08f65bdf5648606c89998a9cc8164397647";
-
-    //private final String password = "medium";
-    private String walletPath;
-    private File walletDir;
-    private org.web3j.crypto.Credentials credentials = org.web3j.crypto.Credentials.create(privateKeyRopsten);
-    private int minimumGasLimit = 21000;
-    private BigInteger gasLimit = new BigInteger(String.valueOf(minimumGasLimit));
-    BIoT contract;
-
-    //Define for Bluetooth
-    BluetoothAdapter mBluetoothAdapter;
-    BluetoothSocket mmSocket;
-    BluetoothDevice mmDevice = null;
-
-    final byte delimiter = 33; //Character !, used to define the end of sending data string from RaspberryPi, example: "20oC !"
-    InputStream mmInputStream;
-    OutputStream mmOutputStream;
-    Thread workerThread;
-    volatile boolean workDone = false;
-    int readBufferPosition = 0;
-    byte[] readBuffer;
-
 
 
     TextView txtLat;
     Button tempButton;
+    Button btnGenerateBlockchain;
+
     SupportMapFragment supportMapFragment;
     private static final int REQUEST_LOCATION_PERMISSION = 100;
+    //Tensorflow and Image classification
+    Button btnImageClassify;
+    public int REQUEST_CODE_INTENT_FOODSCAN = 123;
+    public int REQUEST_CODE_INTENT_HUMIDITY_TEMPERTURE = 456;
+    public static String txtFoodname="";
 
+    //Declare for Humidity and Temperature
+    public String[] arrayTempHum =new String[100];
+    private static String txtFarmName ="ABC fruit farm";
+    private static String txtFarmAddress ="55 Wellesley street, Auckland";
+    private static String txtTemperature="";
+    private static String txtHumidity ="";
+    private static LatLng latLng;
+    SmartContract smartContract;
+    private String smartcontractAddress ="";
+
+    public Context getContext(){return this.getContext();}
+    public static String getTxtFarmName() { return txtFarmName; }
+    public static String getTxtFarmAddress() { return txtFarmAddress; }
+    public static String getTxtTemperature() { return txtTemperature; }
+    public static String getTxtHumidity() {
+        return txtHumidity;
+    }
+    public static String getTxtFoodname() {
+        return txtFoodname;
+    }
+    public static LatLng getLatLng() { return latLng; }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,25 +102,50 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         initViews();
 
+        //Process for Image classification Tensorflow
+        btnImageClassify.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String action;
+                Uri uri;
+                Intent intent = new Intent(MainActivity.this, ClassifierActivity.class);
+                //startActivity(intent);
+                startActivityForResult(intent,REQUEST_CODE_INTENT_FOODSCAN );
+            }
+        });
 
         //walletPath = getFilesDir().getAbsolutePath();
         //walletDir = new File(walletPath);
 
         // start temp button handler
-      /*  tempButton.setOnClickListener(new View.OnClickListener() {
+        tempButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Perform action on temp button click
-                findBluetooth();
-                connectBluetooth("temp_humidity");
+                Intent intentIoT = new Intent(MainActivity.this, bluetoothRaspberrypi.class );
+
+                startActivityForResult(intentIoT, REQUEST_CODE_INTENT_HUMIDITY_TEMPERTURE);
+
             }
-        });*/
+        });
 
-        //Connect to Ethereum
-           connectToEthNetwork();
-           //Temporary uncomment to test Bluetooth
-        //   deploySmartContract();
 
-        //End of onCreate
+        //Process for Blockchain part
+        btnGenerateBlockchain.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //Connect to Ethereum
+                smartContract = new SmartContract();
+                smartContract.connectToEthNetwork();
+
+                //Temporary uncomment to test Bluetooth
+              //  deploySmartContract();
+                smartContract.deploySmartContract();
+                smartcontractAddress = smartContract.getContractAddress();
+                Log.d("AAA", "New address contract is after deploy " + smartcontractAddress);
+                //End of onCreate
+            }
+        });
+
     }
 
 
@@ -143,9 +154,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //Connect bluetooth and read data from Raspberry Pi
         txtLat = (TextView) findViewById(R.id.txtLat);
         tempButton = (Button) findViewById(R.id.tempButton);
-
-        supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.myMap);
-        supportMapFragment.getMapAsync(this);
+        //Tensorflow
+        btnImageClassify = (Button)findViewById(R.id.btnClassifyFood);
+        btnGenerateBlockchain = (Button)findViewById(R.id.btnGenerateBlockchain);
 
     }
 
@@ -153,307 +164,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void readQr(View view) {
         Intent intent = new Intent(MainActivity.this, QrReader.class);
         startActivity(intent);
+
+
+        //Log.d("AAA", "New address contract at scan step is " + smartContract.getContractAddress());
+        //smartContract.readSmartContract(smartContract.getContractAddress());
     }
 
     public void generateQr(View view) {
         Intent intent = new Intent(MainActivity.this, QrGenerate.class);
+        intent.putExtra("FoodName_TimeScan", txtFoodname + " at ABC farm is scanned at " + new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime()));
+
         startActivity(intent);
-    }
-
-
-    public void connectToEthNetwork() {
-        toastAsync("Connecting to Ethereum network...");
-        // FIXME: Add your own API key here
-
-        web3j = Web3j.build(new HttpService("https://ropsten.infura.io/v3/47c63d5fab244e4ba2311dd0a9ce35eb"));
-        try {
-            Web3ClientVersion clientVersion = web3j.web3ClientVersion().sendAsync().get();
-
-            if (!clientVersion.hasError()) {
-                Log.d("AAA", "Connected to Ethereum");
-                //toastAsync("Connected!");
-            } else {
-                //toastAsync(clientVersion.getError().getMessage());
-                Log.d("AAA", "Error Connection to Ethereum" + clientVersion.getError().getMessage());
-            }
-        } catch (Exception e) {
-            Log.d("AAA", "Exception Connection to Ethereum" + e.getMessage());
-            toastAsync(e.getMessage());
-        }
-    }
-
-    private void setupBouncyCastle() {
-        final Provider provider = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
-        if (provider == null) {
-            // Web3j will set up the provider lazily when it's first used.
-            return;
-        }
-        if (provider.getClass().equals(BouncyCastleProvider.class)) {
-            // BC with same package name, shouldn't happen in real life.
-            return;
-        }
-        // Android registers its own BC provider. As it might be outdated and might not include
-        // all needed ciphers, we substitute it with a known BC bundled in the app.
-        // Android's BC has its package rewritten to "com.android.org.bouncycastle" and because
-        // of that it's possible to have another BC implementation loaded in VM.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
-        Security.insertProviderAt(new BouncyCastleProvider(), 1);
-    }
-
-
-    public void createWallet() {
-        try {
-            WalletUtils.generateNewWalletFile(password, walletDir);
-            Log.d("AA", "Wallet generated ");
-            toastAsync("Wallet generated");
-        } catch (Exception e) {
-            Log.d("AA", "Error Wallet generated " + e.getMessage());
-            //toastAsync(e.getMessage());
-        }
-    }
-
-    public void getAddress() {
-        try {
-            //org.web3j.crypto.Credentials credentials = WalletUtils.loadCredentials(password,  walletDir);
-            Log.d("AA", "Address of wallet is " + credentials.getAddress());
-            //toastAsync("Your address is " + credentials.getAddress());
-        } catch (Exception e) {
-            toastAsync(e.getMessage());
-        }
-    }
-
-    public void sendTransaction() {
-        try {
-            //org.web3j.crypto.Credentials credentials = WalletUtils.loadCredentials(password, walletDir);
-            Log.d("AAA", "Value of web3 is " + web3j.toString());
-            TransactionReceipt receipt = Transfer.sendFunds(web3j, credentials, toAddress, new BigDecimal(1), Convert.Unit.ETHER).sendAsync().get();
-            Log.d("AAA", "Transaction complete ");
-            //toastAsync("Transaction complete: " + receipt.getTransactionHash() );
-        } catch (Exception e) {
-            Log.d("AAA", "Exception in Transaction  " + e.getMessage());
-            //toastAsync(e.getMessage());
-        }
-    }
-
-    public void deploySmartContract() {
-
-        // Now lets deploy a smart contract
-        Log.d("AAA", "Deploying smart contract");
-        //Gas price must < = Gas Limit
-
-        ContractGasProvider contractGasProvider = new DefaultGasProvider();
-        //((DefaultGasProvider) contractGasProvider).GAS_PRICE = BigInteger.valueOf(1000);
-        Log.d("AAA", "GAS_Price is " + contractGasProvider.getGasPrice().toString());
-        Log.d("AAA", "GAS_LIMIT is " + contractGasProvider.getGasLimit().toString());
-
-
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-
-                    contract = BIoT.deploy(
-                            web3j,
-                            credentials,
-                            ((DefaultGasProvider) contractGasProvider).GAS_PRICE,
-                            //BigInteger.valueOf(1000),
-                            ((DefaultGasProvider) contractGasProvider).GAS_LIMIT
-
-                    ).send();
-
-                    String contractAddress = contract.getContractAddress();
-                    Log.d("AAA", "Smart contract deployed to address " + contractAddress);
-                    Log.d("AAA", "Start update Humidity ");
-                    contract.setHumidity(BigInteger.valueOf(19)).send();
-                    Log.d("AAA", "Completed updating Humidity ");
-                    Log.d("AAA", "Update value of Temperature after updating is " + contract.getHumidity().send());
-
-                    Log.d("AAA", "Start update Temperature ");
-                    contract.setTemperature(BigInteger.valueOf(18)).send();
-                    Log.d("AAA", "Value of Temperature after updating is " + contract.getTemperature().send());
-
-                    //Update value of Humidity and Temperature
-
-
-                } catch (Exception e) {
-                    Log.d("AAA", "Error in deploying contract " + e.getMessage().toString());
-                    //e.printStackTrace();
-                }
-
-            }
-        });
-        thread.start();
-
-
-    }
-
-
-    public void toastAsync(String message) {
-        runOnUiThread(() -> {
-            Toast.makeText(MainActivity.this, "", Toast.LENGTH_SHORT).show();
-        });
-    }
-
-
-    // this will find a bluetooth printer device
-    void findBluetooth() {
-
-        try {
-
-            //Working with bluetooth
-            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-            if (mBluetoothAdapter == null) {
-                Log.d("AAA", "No bluetooth adapter available");
-                //myLabel.setText("No bluetooth adapter available");
-            }
-
-            if (!mBluetoothAdapter.isEnabled()) {
-                Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBluetooth, 0);
-            }
-
-            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-
-            if (pairedDevices.size() > 0) {
-                for (BluetoothDevice device : pairedDevices) {
-                    // raspberrypi is the name of the bluetooth RaspberryPi
-                    // we got this name from the list of paired devices
-                    if (device.getName().equals("raspberrypi")) {
-                        Log.d("AAA", "The paired device is " + device.getName());
-                        mmDevice = device;
-                        break;
-                    }
-                }
-            }
-            // myLabel.setText("Bluetooth device found.");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    //Connect bluetooth and send the command
-    public void connectBluetooth(String msg2send) {
-        //UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
-        UUID uuid = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee"); //Standard SerialPortService ID
-        try {
-
-            if (mmDevice != null) {
-                mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
-                if (!mmSocket.isConnected()) {
-                    Log.d("AAA", "Connecting device ");
-                    mmSocket.connect();
-                }
-
-                String msg = msg2send;
-                //msg += "\n";
-                mmOutputStream = mmSocket.getOutputStream();
-                mmOutputStream.write(msg.getBytes());
-
-                mmInputStream = mmSocket.getInputStream();
-                listenForDataBluetooth();
-            } else {
-                Toast.makeText(MainActivity.this, "Null device ", Toast.LENGTH_LONG).show();
-            }
-
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            // e.printStackTrace();
-            Log.d("AAA", "Error on send BTMesg is " + e.getMessage().toString());
-        }
-
-    }
-
-
-    void listenForDataBluetooth() {
-        try {
-            final Handler handler = new Handler();
-
-            // this is the ASCII code for a newline character
-
-            workDone = false;
-            readBufferPosition = 0;
-            readBuffer = new byte[1024];
-
-            workerThread = new Thread(new Runnable() {
-                public void run() {
-
-                    while (!Thread.currentThread().isInterrupted() && !workDone) {
-
-                        try {
-
-                            int bytesAvailable = mmInputStream.available();
-                            Log.d("AAA", "Value of bytesAvailable is  " + bytesAvailable);
-
-                            if (bytesAvailable > 0) {
-                                Log.d("AAA", "bytesAvailable > 0 " + bytesAvailable);
-
-                                byte[] packetBytes = new byte[bytesAvailable];
-                                mmInputStream.read(packetBytes);
-
-                                for (int i = 0; i < bytesAvailable; i++) {
-                                    Log.d("AAA", "Loop for i  " + i);
-
-
-                                    byte b = packetBytes[i];
-                                    Log.d("AAA", "delimiter is   " + delimiter + "and b is " + b);
-                                    if (b == delimiter) {
-                                        byte[] encodedBytes = new byte[readBufferPosition];
-                                        System.arraycopy(
-                                                readBuffer, 0,
-                                                encodedBytes, 0,
-                                                encodedBytes.length
-                                        );
-                                        // specify US-ASCII encoding
-                                        final String data = new String(encodedBytes, "US-ASCII");
-                                        readBufferPosition = 0;
-
-                                        // Get the data is sent from Bluetooth Raspberry
-                                        handler.post(new Runnable() {
-                                            public void run() {
-                                                Log.d("AAA", "Data received is " + data);
-                                                //myLabel.setText(data);
-                                                workDone = true;
-                                            }
-                                        });
-
-                                    } else {
-                                        readBuffer[readBufferPosition++] = b;
-                                    }
-                                }
-                            }
-
-                        } catch (IOException ex) {
-                            workDone = true;
-                        }
-
-                    }
-                }
-            });
-
-            workerThread.start();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    //Close bluetooth
-    void closeBluetooth() throws IOException {
-        workDone = true;
-        mmOutputStream.close();
-        mmInputStream.close();
-        mmSocket.close();
-        //myLabel.setText("Bluetooth Closed");
-        Log.d("AAA", "Bluetooth has closed !");
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu, menu);
-        return true;
     }
 
 
@@ -461,10 +182,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        //Clear to be sure new things for IoT read event
+        //mMap.clear();
 
         // Add a marker in Sydney, Australia, and move the camera.
-        LatLng sydney = new LatLng(-34, 151);
+        LatLng sydney = new LatLng(-36, 170);
+        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+       // locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+
         Criteria criteria = new Criteria();
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -478,34 +206,72 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_LOCATION_PERMISSION);
-           // return;
+            // return;
         }
+
         Location lastLocation = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
 
         if (lastLocation != null) {
             Log.d("AAA", "Location is not null");
-            LatLng latLng = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17));
+            latLng = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
 
             MarkerOptions option=new MarkerOptions();
-            option.title("Fruit farm for Food supply chain"); //This will be overrided by customized adaptor
-            option.snippet("ABC farm is the one biggest farm in NZ");  //This will be overrided by customized adaptor
+            //option.title("ABC Fruit Farm"); //This will be overrided by customized adaptor
+            option.snippet("Food Name");  //This will be overrided by customized adaptor
             option.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
             option.position(latLng);
-            Marker currentMarker= mMap.addMarker(option);
 
-            //setting again new customise InforWindow Adaptor
-            mMap.setInfoWindowAdapter(new MapInforWindowAdaptor(this));
+            Marker currentMarker= mMap.addMarker(option);
+            //currentMarker.showInfoWindow();
+            mMap.setInfoWindowAdapter(new MapInforWindowAdaptor(this, txtFarmName, txtFarmAddress, txtFoodname, txtTemperature, txtHumidity));
             currentMarker.showInfoWindow();
 
-        }
+
+       }
         else {
             Log.d("AAA", "Current location is null. Using defaults.");
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sydney, 17));
-            mMap.getUiSettings().setMyLocationButtonEnabled(false);
+            //mMap.getUiSettings().setMyLocationButtonEnabled(false);
         }
 
-
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == REQUEST_CODE_INTENT_FOODSCAN && resultCode == RESULT_OK && data != null)
+        {
+            //Function to get data send back from Camera & Tensorflow result
+            txtFoodname = data.getStringExtra("strResulIntent");
+            //Toast.makeText(this, txtFoodname, Toast.LENGTH_SHORT).show();
+
+            //Google map part: Update Farm with food dectected information from Tensorflow
+            supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.myMap);
+            supportMapFragment.getMapAsync(this);
+        }
+
+        if (requestCode == REQUEST_CODE_INTENT_HUMIDITY_TEMPERTURE && resultCode == RESULT_OK && data != null)
+        {
+            //Get Temperature and Humidity from Raspberry
+            //Intent intentTempHum = getIntent();
+            arrayTempHum = data.getStringArrayExtra("arrayDataTempHum");
+            //Toast.makeText(this, txtFoodname, Toast.LENGTH_SHORT).show();
+            Log.d("AAA", "arrayTempHum[0] is " + arrayTempHum[0]);
+            Log.d("AAA", "arrayTempHum[1] is " + arrayTempHum[1]);
+
+            txtTemperature = arrayTempHum[0];
+            txtHumidity = arrayTempHum[1];
+            Log.d("AAA", "txtHumidity is " + txtHumidity);
+
+
+            //Google map part: Update Farm with food dectected information from Tensorflow
+            supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.myMap);
+            supportMapFragment.getMapAsync(this);
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+
 
 }

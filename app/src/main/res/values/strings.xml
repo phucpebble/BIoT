@@ -1,4 +1,13 @@
 <resources>
     <string name="app_name">BIoT</string>
     <string name="map_api_key">AIzaSyBI_mywyhbz-_P6B0Q_iu-6mr7WAWdr6Hw</string>
+    <string name="description_info">Info</string>
+    <string name="request_permission">This sample needs camera permission.</string>
+    <string name="camera_error">This device doesn\'t support Camera2 API.</string>
+    <string name="toggle_turn_on">NN:On</string>
+    <string name="toggle_turn_off">NN:Off</string>
+    <string name="toggle">Use NNAPI</string>
+    <string name="tflite">tflite</string>
+    <string name="nnapi">NNAPI</string>
+    <string name="threads">Threads:</string>
 </resources>
