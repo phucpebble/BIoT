@@ -15,17 +15,18 @@ BIoT is a solution combining cutting-edege technologies such ash blockchain, IoT
 ### Prerequisites
 
 * Hardware installation
-The physical connection between Raspberry and sensor humidity and temperature (DHT11):
- 
-The actual image of raspberry pi and DHT sensor with breadboard:
 
+The physical connection between Raspberry and sensor humidity and temperature (DHT11):
+![IoT and sensor connection](https://github.com/henryphamit/BIoT/blob/master/demo/Sensor_IoT.png)
+The actual image of raspberry pi and DHT sensor with breadboard:
+![real image of equipments](https://github.com/henryphamit/BIoT/blob/master/demo/realImage.png)
  
 
 * Blockchain cloud setup
 a.	Metamask wallet
- 
+ ![Wallet](https://github.com/henryphamit/BIoT/blob/master/demo/MetaMaskWallet.png)
 b.	Ropsten Ethereum testnet
-
+![](https://github.com/henryphamit/BIoT/blob/master/demo/InfuraProjectsetup.png)
 
 ### Demo
 
