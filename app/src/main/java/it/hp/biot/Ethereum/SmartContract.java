@@ -49,7 +49,7 @@ public class SmartContract {
     //private final String password = "medium";
     private String walletPath;
     private File walletDir;
-    //FIXME: Add your own password here
+
     private final String password = "PrivateKey";//16FB976643702D2E530D0ABA9A2E38B8E44E0A3B6B3C330CD41BB794BDC96DA6"; //Copy from datamask
     private final static String privateKeyRopsten = "16FB976643702D2E530D0ABA9A2E38B8E44E0A3B6B3C330CD41BB794BDC96DA6"; //Privekey export form Menu, DataMask
     private final static String contractAddressRopsten = "0x6f338949af6df038d715a5e07d10f3a08cb0d68e";
