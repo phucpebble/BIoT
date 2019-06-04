@@ -31,6 +31,9 @@ b.	Ropsten Ethereum testnet
 
 Video demo link: https://lnkd.in/gDXNFDB
 
+![screen shoot](https://github.com/henryphamit/BIoT/blob/master/demo/demoimages.png)
+
+
 The demo flow:
 In the beginning, the farmer scans food and gets automatically food name (applied machine learning), other information can be collected through IoT device (Raspberry) and sensors such as Humidity, Temperature and GPS.
 Combining with farm information, the data of food is created on Ethereum blockchain. And then, a QR code is generated based on the address of smart contract. Information of food on supply chain can be added continuously based on the events on supply chain.
