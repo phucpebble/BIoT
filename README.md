@@ -42,4 +42,4 @@ The demo flow:
 In the beginning, the farmer scans food and gets automatically food name (applied machine learning), other information can be collected through IoT device (Raspberry) and sensors such as Humidity, Temperature and GPS.
 Combining with farm information, the data of food is created on Ethereum blockchain. And then, a QR code is generated based on the address of smart contract. Information of food on supply chain can be added continuously based on the events on supply chain.
 In the end, the consumer can scan the QR code on food, traceback all food information on supply chain to know the quality of the product. All recorded data of food on Ethereum blockchain is immutable, so this prevents food fraud.
-No alt text provided for this image
+
