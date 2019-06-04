@@ -23,9 +23,12 @@ The actual image of raspberry pi and DHT sensor with breadboard:
  
 
 * Blockchain cloud setup
-a.	Metamask wallet
+- Metamask wallet
+
  ![Wallet](https://github.com/henryphamit/BIoT/blob/master/demo/MetaMaskWallet.png)
-b.	Ropsten Ethereum testnet
+ 
+- Ropsten Ethereum testnet
+
 ![](https://github.com/henryphamit/BIoT/blob/master/demo/InfuraProjectsetup.png)
 
 ### Demo
