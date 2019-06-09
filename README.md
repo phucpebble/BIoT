@@ -1,4 +1,4 @@
-# Applying blockchain to help manage food safety on food supply chain
+# Applying blockchain for IoT to help manage food safety on food supply chain
 
 ### Overview
 
